@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>0Xnet WebSocket Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #e5e7eb;
+      padding: 20px;
+    }
+
+    h1 {
+      color: #38bdf8;
+    }
+
+    #log {
+      border: 1px solid #334155;
+      padding: 10px;
+      height: 300px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+      background: #020617;
+    }
+
+    input, button {
+      padding: 8px;
+      font-size: 14px;
+    }
+
+    input {
+      width: 70%;
+    }
+
+    button {
+      width: 25%;
+      background: #38bdf8;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>0Xnet – WebSocket Test</h1>
+
+  <div id="log"></div>
+
+  <input id="messageInput" placeholder="Type a message..." />
+  <button onclick="sendMessage()">Send</button>
+
+  <script>
+    const HOST_IP = "172.31.91.4";
+    const PORT = 3000;
+
+    const socket = new WebSocket(`ws://${HOST_IP}:${PORT}`);
+
+    const log = document.getElementById("log");
+
+    function logMessage(text) {
+      const p = document.createElement("p");
+      p.textContent = text;
+      log.appendChild(p);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    socket.onopen = () => {
+      logMessage("🟢 Connected to 0Xnet server");
+      console.log("🟢 Connected to 0Xnet server");
+    };
+
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      logMessage("📩 Received: " + JSON.stringify(data));
+      console.log(data);
+    };
+
+    socket.onclose = () => {
+      logMessage("🔴 Disconnected from server");
+      console.log("🔴 Disconnected from server");
+    };
+
+    socket.onerror = (err) => {
+      logMessage("❌ WebSocket error");
+      console.error(err);
+    };
+
+    function sendMessage() {
+      const input = document.getElementById("messageInput");
+      if (!input.value) return;
+
+      const message = {
+        type: "chat",
+        text: input.value,
+        time: Date.now()
+      };
+
+      socket.send(JSON.stringify(message));
+      logMessage("📤 Sent: " + JSON.stringify(message));
+      input.value = "";
+    }
+  </script>
+
+</body>
+</html>
