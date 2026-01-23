@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>0Xnet – WebRTC Client</title>
+</head>
+<body>
+
+<h2>📺 Client – Watching Stream</h2>
+<video id="remoteVideo" autoplay playsinline muted></video>
+
+<script>
+  const HOST_IP = "172.31.91.4";
+  const PORT = 3000;
+
+  const socket = new WebSocket(`ws://${HOST_IP}:${PORT}`);
+
+  const pc = new RTCPeerConnection({
+    iceServers: [
+      { urls: "stun:stun.l.google.com:19302" }
+    ]
+  });
+
+  const video = document.getElementById("remoteVideo");
+
+  pc.ontrack = (event) => {
+    console.log("🎥 Track received");
+    video.srcObject = event.streams[0];
+  };
+
+  pc.onicecandidate = (event) => {
+    if (event.candidate) {
+      socket.send(JSON.stringify({
+        type: "ice",
+        candidate: event.candidate
+      }));
+    }
+  };
+
+  socket.onopen = () => {
+    console.log("📡 Client ready");
+    socket.send(JSON.stringify({ type: "ready" }));
+  };
+
+  socket.onmessage = async (event) => {
+    const data = JSON.parse(event.data);
+
+    if (data.type === "offer") {
+      console.log("📨 Offer received");
+      await pc.setRemoteDescription(data.offer);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+
+      socket.send(JSON.stringify({
+        type: "answer",
+        answer
+      }));
+    }
+
+    if (data.type === "ice") {
+      await pc.addIceCandidate(data.candidate);
+    }
+  };
+</script>
+
+</body>
+</html>

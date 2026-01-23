@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>OXnet- webRTC Host0</title>
+</head>
+<body>
+    <h2>
+        🎥 Host - Camera Stream
+    </h2>
+    <video id="localVideo" autoplay muted playsinline></video>
+    <script>
+    const HOST_IP = "172.31.91.4";   // host device IP
+    const PORT = 3000;
+
+    const socket = new WebSocket(`ws://${HOST_IP}:${PORT}`);
+    const pc = new RTCPeerConnection();
+
+    // create video element
+    const video = document.createElement("video");
+    video.autoplay = true;
+    video.muted = true;
+    document.body.appendChild(video);
+
+    // get camera
+    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        .then(stream => {
+        video.srcObject = stream;
+        stream.getTracks().forEach(track => pc.addTrack(track, stream));
+        });
+
+    // send ICE candidates to client
+    pc.onicecandidate = (event) => {
+        if (event.candidate) {
+        socket.send(JSON.stringify({
+            type: "ice",
+            candidate: event.candidate
+        }));
+        }
+    };
+
+    socket.onmessage = async (event) => {
+        const data = JSON.parse(event.data);
+
+        // client is ready → create offer
+        if (data.type === "ready") {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);   // ✅ FIXED
+        socket.send(JSON.stringify({
+            type: "offer",
+            offer
+        }));
+        }
+
+        // receive answer
+        if (data.type === "answer") {
+        await pc.setRemoteDescription(data.answer);
+        }
+
+        // receive ICE from client
+        if (data.type === "ice") {
+        await pc.addIceCandidate(data.candidate);
+        }
+    };
+    </script>
+</body>
+</html>
